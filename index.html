@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ergonomic Session Monitor</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f5f5f5;
+        color: #333;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+      }
+      h1 {
+        color: #2c3e50;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .session-controls {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+      button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 500;
+        transition: all 0.3s;
+      }
+      .start-btn {
+        background-color: #27ae60;
+        color: white;
+      }
+      .end-btn {
+        background-color: #e74c3c;
+        color: white;
+      }
+      button:hover {
+        opacity: 0.9;
+        transform: translateY(-2px);
+      }
+      .dashboard {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+      .session-info,
+      .sensor-data,
+      .ai-recommendations {
+        background-color: #f9f9f9;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+      .session-info {
+        grid-column: span 2;
+      }
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      .data-table th,
+      .data-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      .data-table th {
+        background-color: #f2f2f2;
+      }
+      .data-table tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+      .status {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 14px;
+        margin-left: 10px;
+      }
+      .connected {
+        background-color: #dff0d8;
+        color: #3c763d;
+      }
+      .disconnected {
+        background-color: #f2dede;
+        color: #a94442;
+      }
+      .status-heading {
+        display: flex;
+        align-items: center;
+      }
+      .break-recommendation {
+        background-color: #e3f2fd;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-left: 4px solid #2196f3;
+        border-radius: 4px;
+      }
+      .activity-recommendation {
+        background-color: #e8f5e9;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-left: 4px solid #4caf50;
+        border-radius: 4px;
+      }
+      .environment-recommendation {
+        background-color: #fff8e1;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-left: 4px solid #ffc107;
+        border-radius: 4px;
+      }
+      .recommendation-group {
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px dashed #ccc;
+      }
+      .recommendation-time {
+        font-size: 12px;
+        color: #666;
+        text-align: right;
+        display: block;
+        margin-top: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Ergonomic Session Monitor</h1>
+
+      <div class="session-controls">
+        <button class="start-btn" id="startSessionBtn">Start Session</button>
+        <button class="end-btn" id="endSessionBtn">End Session</button>
+      </div>
+
+      <div class="session-info">
+        <h2>Session Information</h2>
+        <p>
+          <strong>Status:</strong> <span id="sessionStatus">Not Started</span>
+        </p>
+        <p><strong>Start Time:</strong> <span id="startTime">-</span></p>
+        <p><strong>End Time:</strong> <span id="endTime">-</span></p>
+        <p><strong>Duration:</strong> <span id="duration">-</span></p>
+      </div>
+
+      <div class="dashboard">
+        <div class="sensor-data">
+          <div class="status-heading">
+            <h2>Real-time Sensor Data</h2>
+            <span id="connectionStatus" class="status disconnected"
+              >Disconnected</span
+            >
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Timestamp & Readings</th>
+              </tr>
+            </thead>
+            <tbody id="sensorDataBody">
+              <tr>
+                <td>No data available</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="ai-recommendations">
+          <h2>AI Recommendations</h2>
+          <div id="aiRecommendationsContainer">
+            <p>No recommendations yet</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const startSessionBtn = document.getElementById("startSessionBtn");
+        const endSessionBtn = document.getElementById("endSessionBtn");
+        const sessionStatus = document.getElementById("sessionStatus");
+        const startTime = document.getElementById("startTime");
+        const endTime = document.getElementById("endTime");
+        const duration = document.getElementById("duration");
+        const connectionStatus = document.getElementById("connectionStatus");
+        const sensorDataBody = document.getElementById("sensorDataBody");
+        const aiRecommendationsContainer = document.getElementById(
+          "aiRecommendationsContainer"
+        );
+
+        // Function to update UI with data
+        function updateUI(data) {
+          // Update session status
+          if (data.session_active) {
+            sessionStatus.textContent = "Active";
+            sessionStatus.style.color = "#27ae60";
+          } else {
+            sessionStatus.textContent = "Inactive";
+            sessionStatus.style.color = "#e74c3c";
+          }
+
+          // Update times
+          startTime.textContent = data.session_start_time || "-";
+          endTime.textContent = data.session_end_time || "-";
+          duration.textContent = data.session_duration || "-";
+
+          // Update connection status
+          if (data.connection_status === "Connected") {
+            connectionStatus.textContent = "Connected";
+            connectionStatus.className = "status connected";
+          } else {
+            connectionStatus.textContent = "Disconnected";
+            connectionStatus.className = "status disconnected";
+          }
+
+          // Update sensor data
+          if (data.sensor_data && data.sensor_data.length > 0) {
+            let sensorRows = "";
+            data.sensor_data.forEach((entry) => {
+              sensorRows += `<tr><td>${entry}</td></tr>`;
+            });
+            sensorDataBody.innerHTML = sensorRows;
+          } else {
+            sensorDataBody.innerHTML = "<tr><td>No data available</td></tr>";
+          }
+
+          // Update AI recommendations
+          if (data.ai_recommendations && data.ai_recommendations.length > 0) {
+            let recommendationsHTML = "";
+            const now = new Date();
+
+            data.ai_recommendations.forEach((recommendation, index) => {
+              const parts = recommendation.split("\n\n");
+              const timeStamp = now.toLocaleTimeString();
+
+              recommendationsHTML += '<div class="recommendation-group">';
+
+              // Process each part: BREAK, ACTIVITY, ENVIRONMENT
+              parts.forEach((part) => {
+                if (part.startsWith("BREAK:")) {
+                  const breakText = part.replace("BREAK:", "").trim();
+                  recommendationsHTML += `
+                                    <div class="break-recommendation">
+                                        <strong>Break Recommendation:</strong> ${breakText}
+                                    </div>`;
+                } else if (part.startsWith("ACTIVITY:")) {
+                  const activityText = part.replace("ACTIVITY:", "").trim();
+                  recommendationsHTML += `
+                                    <div class="activity-recommendation">
+                                        <strong>Suggested Activity:</strong> ${activityText}
+                                    </div>`;
+                } else if (part.startsWith("ENVIRONMENT:")) {
+                  const envText = part.replace("ENVIRONMENT:", "").trim();
+                  recommendationsHTML += `
+                                    <div class="environment-recommendation">
+                                        <strong>Environment Suggestion:</strong> ${envText}
+                                    </div>`;
+                }
+              });
+
+              recommendationsHTML += `<span class="recommendation-time">Generated at ${timeStamp}</span>`;
+              recommendationsHTML += "</div>";
+            });
+
+            aiRecommendationsContainer.innerHTML = recommendationsHTML;
+          } else {
+            aiRecommendationsContainer.innerHTML =
+              "<p>No recommendations yet</p>";
+          }
+        }
+
+        // Function to fetch data from server
+        function fetchData() {
+          fetch("/data")
+            .then((response) => response.json())
+            .then((data) => {
+              updateUI(data);
+            })
+            .catch((error) => console.error("Error fetching data:", error));
+        }
+
+        // Start fetching data periodically
+        setInterval(fetchData, 1000);
+
+        // Handle session start button click
+        startSessionBtn.addEventListener("click", function () {
+          fetch("/session", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "start",
+            }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              console.log("Session started:", data);
+              fetchData(); // Update UI immediately after starting session
+            })
+            .catch((error) => console.error("Error starting session:", error));
+        });
+
+        // Handle session end button click
+        endSessionBtn.addEventListener("click", function () {
+          fetch("/session", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "end",
+            }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              console.log("Session ended:", data);
+              fetchData(); // Update UI immediately after ending session
+            })
+            .catch((error) => console.error("Error ending session:", error));
+        });
+
+        // Initial fetch
+        fetchData();
+      });
+    </script>
+  </body>
+</html>
